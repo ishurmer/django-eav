@@ -33,7 +33,6 @@ from django.forms import BooleanField, CharField, DateTimeField, FloatField, \
 from django.contrib.admin.widgets import AdminSplitDateTime
 from django.utils.translation import ugettext_lazy as _
 
-
 class BaseDynamicEntityForm(ModelForm):
     '''
     ModelForm for entity with support for EAV attributes. Form fields are

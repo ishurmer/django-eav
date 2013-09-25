@@ -359,6 +359,15 @@ class Value(models.Model):
     attribute = models.ForeignKey(Attribute, db_index=True,
                                   verbose_name=_(u"attribute"))
 
+    def __init__(self, *args, **kwargs):
+        super(Value, self).__init__(*args, **kwargs)
+        if self.entity:
+            #TODO: Not sure why we need to do this, but the Django collectors
+            #appear to be picking up these references due to the dynamic Values
+            #and 500ing when trying to resolve them. Perhaps an issue with 
+            #Django 1.6?
+            setattr(self, self.entity.__class__.__name__, self.entity)
+
     def save(self, *args, **kwargs):
         '''
         Validate and save this value
@@ -566,3 +575,10 @@ if 'django_nose' in settings.INSTALLED_APPS:
     Please, someone tell me a better way to do this.
     '''
     from .tests.models import Patient, Encounter
+
+try:
+    from south.modelsinspector import add_introspection_rules
+    add_introspection_rules([], ["^eav\.fields\.EavSlugField"])
+    add_introspection_rules([], ["^eav\.fields\.EavDatatypeField"])
+except ImportError:
+    pass

@@ -29,7 +29,8 @@ from .models import Attribute, Value, EnumValue, EnumGroup
 
 class BaseEntityAdmin(ModelAdmin):
     
-    def render_change_form(self, request, context, add=False, change=False, form_url='', obj=None):
+    def render_change_form(self, request, context, add=False, change=False,
+        form_url='', obj=None):
         """
         Wrapper for ModelAdmin.render_change_form. Replaces standard static
         AdminForm with an EAV-friendly one. The point is that our form generates

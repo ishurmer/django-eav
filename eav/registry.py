@@ -28,7 +28,8 @@ Classes
 '''
 
 from django.db.utils import DatabaseError
-from django.db.models.signals import pre_init, post_init, pre_save, post_save
+from django.db.models.signals import pre_init, post_init, pre_save, post_save ,\
+                                     pre_delete
 from django.contrib.contenttypes import generic
 
 from .managers import EntityManager
@@ -44,6 +45,7 @@ class EavConfig(object):
     manager_attr = 'objects'
     manager_only = False
     eav_attr = 'eav'
+    eav_class = Entity
     generic_relation_attr = 'eav_values'
     generic_relation_related_name = None
 
@@ -106,7 +108,8 @@ class Registry(object):
         '''
         instance = kwargs['instance']
         config_cls = instance.__class__._eav_config_cls
-        setattr(instance, config_cls.eav_attr, Entity(instance))
+        entity_cls = config_cls.eav_class
+        setattr(instance, config_cls.eav_attr, entity_cls(instance))
 
     def __init__(self, model_cls):
         '''
