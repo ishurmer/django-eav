@@ -47,6 +47,7 @@ from django.conf import settings
 from .validators import *
 from .fields import EavSlugField, EavDatatypeField
 
+from measurement.fields import DistanceField
 
 class EnumValue(models.Model):
     '''
@@ -161,6 +162,7 @@ class Attribute(models.Model):
     TYPE_BOOLEAN = 'bool'
     TYPE_OBJECT = 'object'
     TYPE_ENUM = 'enum'
+    TYPE_DISTANCE = 'dist'
 
     DATATYPE_CHOICES = (
         (TYPE_TEXT, _(u"Text")),
@@ -170,6 +172,7 @@ class Attribute(models.Model):
         (TYPE_BOOLEAN, _(u"True / False")),
         (TYPE_OBJECT, _(u"Django Object")),
         (TYPE_ENUM, _(u"Multiple Choice")),
+        (TYPE_DISTANCE, _("Distance Field"))
     )
 
     name = models.CharField(_(u"name"), max_length=100,
@@ -225,6 +228,7 @@ class Attribute(models.Model):
             'bool': validate_bool,
             'object': validate_object,
             'enum': validate_enum,
+            'dist': validate_distance
         }
 
         validation_function = DATATYPE_VALIDATORS[self.datatype]
@@ -346,6 +350,9 @@ class Value(models.Model):
     value_bool = models.NullBooleanField(blank=True, null=True)
     value_enum = models.ForeignKey(EnumValue, blank=True, null=True,
                                    related_name='eav_values')
+    value_dist = DistanceField(unit='m', unit_field='distance_unit',
+                                   blank=True, null=True)
+    distance_unit = models.CharField(max_length=8, blank=True, null=True)
 
     generic_value_id = models.IntegerField(blank=True, null=True)
     generic_value_ct = models.ForeignKey(ContentType, blank=True, null=True,
@@ -358,15 +365,6 @@ class Value(models.Model):
 
     attribute = models.ForeignKey(Attribute, db_index=True,
                                   verbose_name=_(u"attribute"))
-
-    def __init__(self, *args, **kwargs):
-        super(Value, self).__init__(*args, **kwargs)
-        if self.entity:
-            #TODO: Not sure why we need to do this, but the Django collectors
-            #appear to be picking up these references due to the dynamic Values
-            #and 500ing when trying to resolve them. Perhaps an issue with 
-            #Django 1.6?
-            setattr(self, self.entity.__class__.__name__, self.entity)
 
     def save(self, *args, **kwargs):
         '''
