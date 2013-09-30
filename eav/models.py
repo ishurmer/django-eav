@@ -491,16 +491,14 @@ class Entity(object):
             
             if value is None:
                 if attribute.required:
-                    raise ValidationError(_(u"%(attr)s EAV field cannot " \
-                                                u"be blank") % \
-                                              {'attr': attribute.slug})
+                    raise ValidationError(_(u"Field cannot be blank"),
+                                              params={'attr': attribute})
             else:
                 try:
                     attribute.validate_value(value)
                 except ValidationError, e:
-                    raise ValidationError(_(u"%(attr)s EAV field %(err)s") % \
-                                              {'attr': attribute.slug,
-                                               'err': e})
+                    raise ValidationError(_(u"%(err)s" % {'err': e}),
+                                          params={'attr': attribute})
                 
     def get_values_dict(self):
         values_dict = dict()
