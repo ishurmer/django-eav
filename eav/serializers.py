@@ -9,6 +9,7 @@ from eav.models import EnumValue
 
 class EAVModelSerializer(serializers.ModelSerializer):
     INCLUDE_EAV_DATA = True
+    EAV_SEPARATE_DICT = False
 
 
     def full_clean(self, instance):
@@ -40,7 +41,8 @@ class EAVModelSerializer(serializers.ModelSerializer):
             for k in eav.get_all_attribute_slugs( ):
                 if data.get(k):
                     self._eav_data[k] = data[k]
-                    
+                    del data[k]
+
         return rev_data
 
     def eav_values_dict_to_native(self, dct):
@@ -78,7 +80,11 @@ class EAVModelSerializer(serializers.ModelSerializer):
         if self.INCLUDE_EAV_DATA and obj:
             eav = EAVModelSerializer._get_eav_object(obj)
             vals = eav.get_values_dict( )
-            dat['eav'] = self.eav_values_dict_to_native(vals)
+            dct = self.eav_values_dict_to_native(vals)
+            if self.EAV_SEPARATE_DICT:
+                dat['eav'] = dct
+            else:
+                dat.update(dct)
 
         return dat
 

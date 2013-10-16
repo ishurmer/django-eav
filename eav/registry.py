@@ -148,7 +148,6 @@ class Registry(object):
         post_init.connect(Registry.attach_eav_attr, sender=self.model_cls)
         pre_save.connect(Entity.pre_save_handler, sender=self.model_cls)
         post_save.connect(Entity.post_save_handler, sender=self.model_cls)
-
     def _detach_signals(self):
         '''
         Detach all signals for eav
@@ -156,6 +155,7 @@ class Registry(object):
         post_init.disconnect(Registry.attach_eav_attr, sender=self.model_cls)
         pre_save.disconnect(Entity.pre_save_handler, sender=self.model_cls)
         post_save.disconnect(Entity.post_save_handler, sender=self.model_cls)
+
 
     def _attach_generic_relation(self):
         '''
