@@ -43,6 +43,7 @@ from django.contrib.contenttypes import generic
 from django.contrib.sites.models import Site
 from django.contrib.sites.managers import CurrentSiteManager
 from django.conf import settings
+from django.core.exceptions import ValidationError
 
 from .validators import *
 from .fields import EavSlugField, EavDatatypeField
@@ -193,6 +194,66 @@ class Attribute(models.Model):
 
     type = models.CharField(_(u"type"), max_length=20, blank=True, null=True)
 
+    _default_value = models.TextField(blank=True, null=True)
+
+    @property
+    def default_value(self):
+        if not self._default_value: return None
+        if self.datatype == self.TYPE_FLOAT:
+            return float(self._default_value)
+        elif self.datatype == self.TYPE_INT:
+            return int(self._default_value)
+        elif self.datatype == self.TYPE_BOOLEAN:
+            return bool(self._default_value)
+        elif self.datatype == self.TYPE_ENUM:
+            try:
+                return self.enum_group.enums.get(value=self._default_value)
+            except EnumValue.DoesNotExist:
+                return None
+            except AttributeError:
+                return None
+        else:
+            return self._default_value
+
+    @default_value.setter
+    def default_value(self, value):
+        if self.datatype == self.TYPE_FLOAT:
+            try:
+                float(value)
+            except (TypeError, ValueError):
+                raise ValidationError('Invalid float value.')
+        elif self.datatype == self.TYPE_INT:
+            try:
+                int(value)
+            except (TypeError, ValueError):
+                raise ValidationError('Invalid integer value.')
+        elif self.datatype == self.TYPE_BOOLEAN:
+            try:
+                if value.lower( ) == 'true': value = 1
+                if value.lower( ) == 'false': value = 0
+                bool(value)
+            except (TypeError, ValueError):
+                raise ValidationError('Invalid boolean value.')
+        elif self.datatype == self.TYPE_ENUM:
+            gr = self.enum_group
+            if not gr:
+                raise ValidationError('Please save the attribute before adding '+
+                    'a default.')
+            vals = self.enum_group.enums.all( )
+            vstr = [str(v.value) for v in vals]
+            if value not in vstr:
+                raise ValidationError('Please choose a valid choice from %s' % (
+                    ", ".join(vstr)))
+        elif self.datatype == self.TYPE_DISTANCE:
+            try:
+                ds = DistanceField.parse_string(value)
+            except:
+                raise ValidationError('Please enter a valid distance.')
+        elif self.datatype != self.TYPE_TEXT:
+            raise ValidationError('Default values are not allowed for this type.')
+
+        self._default_value = value
+    
     @property
     def help_text(self):
         return self.description
@@ -469,11 +530,16 @@ class Entity(object):
         Saves all the EAV values that have been set on this entity.
         '''
         for attribute in self.get_all_attributes():
+            has_val = False
             if self._hasattr(attribute.slug):
                 attribute_value = self._getattr(attribute.slug)
+                if attribute_value != None: has_val = True
                 attribute.save_value(self.model, attribute_value)
+            if not has_val:
+                if attribute.default_value:
+                    attribute.save_value(self.model, attribute.default_value)
 
-    def validate_attributes(self):
+    def validate_attributes(self, data=None):
         '''
         Called before :meth:`save`, first validate all the entity values to
         make sure they can be created / saved cleanly.
@@ -482,9 +548,13 @@ class Entity(object):
         '''
         values_dict = self.get_values_dict()
 
+        validators = getattr(self.model._eav_config_cls, 'validators_by_slug',
+                             {})
+
+        if data: values_dict.update(data)
         for attribute in self.get_all_attributes():
             value = None
-            if self._hasattr(attribute.slug):
+            if self._hasattr(attribute.slug) and not data:
                 value = self._getattr(attribute.slug)
             else:
                 value = values_dict.get(attribute.slug, None)
@@ -497,9 +567,18 @@ class Entity(object):
                 try:
                     attribute.validate_value(value)
                 except ValidationError, e:
-                    raise ValidationError(_(u"%(err)s" % {'err': e}),
+                    raise ValidationError(_(u"%(err)s" % {'err': e.message}),
                                           params={'attr': attribute})
-                
+        
+            aval = validators.get(attribute.slug.replace("-", "_"), None)
+            if aval:
+                try:
+                    aval(value, attribute, self.model)
+                except ValidationError, e:
+                    raise ValidationError(_(u"%(err)s" % {'err': e.message}),
+                                          params={'attr': attribute})
+
+
     def get_values_dict(self):
         values_dict = dict()
         for value in self.get_values():

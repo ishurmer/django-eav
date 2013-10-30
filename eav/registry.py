@@ -169,6 +169,14 @@ class Registry(object):
         rel_name = self.config_cls.generic_relation_related_name or \
                    self.model_cls.__name__
 
+        #Django bug 16920: https://code.djangoproject.com/ticket/16920
+        #causes issues with GenericRelation's and "related_names" when deleting
+        #in the admin. Therefore by default we don't attach the related_name.
+        if not getattr(self.config_cls, 'force_generic_relation_related_name',
+                       False):
+            rel_name = None
+
+
         gr_name = self.config_cls.generic_relation_attr.lower()
         generic_relation = \
                      generic.GenericRelation(Value,

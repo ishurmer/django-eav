@@ -62,12 +62,25 @@ class BaseDynamicEntityForm(ModelForm):
         self.entity = getattr(self.instance, config_cls.eav_attr)
         self._build_dynamic_fields()
 
+    def clean(self):
+        try:
+            self.entity.validate_attributes(data=self.cleaned_data)
+        except ValidationError, vex:
+            attr = getattr(vex, 'params', {}).get('attr', None)
+            if attr:
+                self.errors[attr.slug] = self.error_class(vex.messages)
+            else:
+                raise
+        return self.cleaned_data
+
     def _build_dynamic_fields(self):
         # reset form fields
         self.fields = deepcopy(self.base_fields)
 
         for attribute in self.entity.get_all_attributes():
             value = getattr(self.entity, attribute.slug)
+            if not value:
+                value = attribute.default_value
 
             defaults = {
                 'label': attribute.name.capitalize(),

@@ -104,7 +104,10 @@ def validate_enum(value):
     '''
     from .models import EnumValue
     if not isinstance(value, EnumValue):
-        raise ValidationError(_(u"Must be an EnumValue model object instance"))
+        try:
+            value = EnumValue.objects.get(pk=value)
+        except:
+            raise ValidationError(_("Please make a valid choice."))
     if not value.pk:
         raise ValidationError(_(u"EnumValue has not been saved yet"))
 

@@ -20,15 +20,21 @@
 
 from django.contrib import admin
 from django.contrib.admin.options import (
-    ModelAdmin, InlineModelAdmin, StackedInline
+    ModelAdmin, InlineModelAdmin, StackedInline, IS_POPUP_VAR
 )
+
+from django import forms
+from django.forms.utils import ErrorList
+from django.core.exceptions import ValidationError
 from django.forms.models import BaseInlineFormSet
 from django.utils.safestring import mark_safe
+from django.utils.translation import ugettext as _
 
 from .models import Attribute, Value, EnumValue, EnumGroup
 
+import copy
+
 class BaseEntityAdmin(ModelAdmin):
-    
     def render_change_form(self, request, context, add=False, change=False,
         form_url='', obj=None):
         """
@@ -52,6 +58,65 @@ class BaseEntityAdmin(ModelAdmin):
         super_meth = super(BaseEntityAdmin, self).render_change_form
         return super_meth(request, context, add, change, form_url, obj)
 
+
+
+class BaseEntityFieldsetAdmin(ModelAdmin):
+    eav_fieldset_classes = []
+    attribute_accessor_name = 'get_eav_attributes'
+    standard_response_add_workflow = False
+
+
+    def get_fieldset_attrs(self, attrs, request, obj=None, add=False,
+                           change=False):
+        return [(
+            _('Fields'), {'fields': [ac.slug for ac in attrs],
+                          'classes': []}
+        )]
+
+    def response_add(self, request, obj, post_url_continue=None):
+        if self.standard_response_add_workflow:
+            return super(BaseEntityFieldsetAdmin, self).response_add(request, 
+                obj, post_url_continue)
+        # Follow the workflow of Django Auth User admin, in that we want to
+        # use "save and continue" functionality if "save and add another" is not
+        # clicked, and we're not using a popup.
+        if '_addanother' not in request.POST and (
+            IS_POPUP_VAR not in request.POST):
+            request.POST['_continue'] = 1
+        assert False, obj
+        return super(BaseEntityFieldsetAdmin, self).response_add(request, obj,
+                                                           post_url_continue)
+    def render_change_form(self, request, context, add=False, change=False,
+        form_url='', obj=None):
+        # Automatically add the relevant EAV fields to fieldsets, based on
+        # their asset class. We have to do this here and not get_fieldsets,
+        # as the EAV fields are not actually added to the form until it is
+        # instantiated, which is too late for the get_form dynamic form method.
+        form = context['adminform'].form
+        fs = list(self.fieldsets or [(None, {'fields':
+                                             list(form.fields.keys())})])
+        if obj:
+            remove_from = []
+            all_acs = getattr(obj, self.attribute_accessor_name)( )
+            fsets = self.get_fieldset_attrs(all_acs, request, obj, add, change)
+
+            for fst in fsets:
+                remove_from.extend(fst[1]['fields'])
+                fst[1]['classes'] = list(fst[1]['classes'] or [])+copy.copy(
+                    getattr(self, 'eav_fieldset_classes', []))
+                fst[1]['classes'].append('fromAssetClass')
+                fs.append(fst)
+
+            for slug, dat in fs:
+                if 'fromAssetClass' in dat.get('classes', []):
+                    continue
+                dat['fields']=[f for f in dat['fields'] if f not in remove_from]
+
+        adminform = admin.helpers.AdminForm(form, fs, self.prepopulated_fields)
+        media = mark_safe(self.media + adminform.media)
+        context.update(adminform=adminform, media=media)
+        super_meth = super(BaseEntityFieldsetAdmin, self).render_change_form
+        return super_meth(request, context, add, change, form_url, obj)
 
 class BaseEntityInlineFormSet(BaseInlineFormSet):
     """
@@ -94,10 +159,40 @@ class BaseEntityInline(InlineModelAdmin):
 
         return [(None, {'fields': form.fields.keys()})]
 
+class AttributeAdminForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super(AttributeAdminForm, self).__init__(*args, **kwargs)
+        self.fields['_default_value'].widget = forms.TextInput( )
+
+    def clean(self):
+        v = self.cleaned_data['_default_value']
+        if v:
+            try:
+                self.instance.datatype = self.cleaned_data['datatype']
+                self.instance.default_value = v
+            except ValidationError, vex:
+                self._errors['_default_value'] = ErrorList([vex.message])
+        return self.cleaned_data
+
 class AttributeAdmin(ModelAdmin):
-    list_display = ('name', 'slug', 'datatype', 'description', 'site')
+    form = AttributeAdminForm
+    list_display = ('name', 'slug', 'datatype', 'description', 'site', 'type')
     list_filter = ['site']
     prepopulated_fields = {'slug': ('name',)}
+    fieldsets = (
+        (_('Main Fields'), {
+            'fields': ('name', 'site', 'slug', 'required', 'description')
+        }),
+        (_('Type Field'), {
+            'fields': ('datatype', 'type')
+        }),
+        (_('Choice Field'), {
+            'fields': ('enum_group', )
+        }),
+        (_('Default Value'), {
+            'fields': ('_default_value', )
+        })
+    )
 
 admin.site.register(Attribute, AttributeAdmin)
 admin.site.register(Value)
