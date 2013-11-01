@@ -11,7 +11,6 @@ class EAVModelSerializer(serializers.ModelSerializer):
     INCLUDE_EAV_DATA = True
     EAV_SEPARATE_DICT = False
 
-
     def full_clean(self, instance):
         super(EAVModelSerializer, self).full_clean(instance)
 
@@ -49,7 +48,7 @@ class EAVModelSerializer(serializers.ModelSerializer):
         add_fields = {}
         for k, v in dct.iteritems( ):
             if isinstance(v, EnumValue):
-                raise ValueError, 'EnumValue fields are not supported.'
+                add_fields[k] = v.value
             elif isinstance(v, D):
                 add_fields[k] = str(v)
                 add_fields["%s_metres" % k] = v.m

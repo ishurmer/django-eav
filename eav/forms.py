@@ -63,6 +63,10 @@ class BaseDynamicEntityForm(ModelForm):
         self._build_dynamic_fields()
 
     def clean(self):
+        self.cleaned_data = super(BaseDynamicEntityForm, self).clean( )
+        #If we already have errors then don't bother running the individual
+        #eav validators.
+        if self._errors: return self.cleaned_data
         try:
             self.entity.validate_attributes(data=self.cleaned_data)
         except ValidationError, vex:

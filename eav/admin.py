@@ -83,7 +83,6 @@ class BaseEntityFieldsetAdmin(ModelAdmin):
         if '_addanother' not in request.POST and (
             IS_POPUP_VAR not in request.POST):
             request.POST['_continue'] = 1
-        assert False, obj
         return super(BaseEntityFieldsetAdmin, self).response_add(request, obj,
                                                            post_url_continue)
     def render_change_form(self, request, context, add=False, change=False,
@@ -165,6 +164,7 @@ class AttributeAdminForm(forms.ModelForm):
         self.fields['_default_value'].widget = forms.TextInput( )
 
     def clean(self):
+        self.cleaned_data = super(AttributeAdminForm, self).clean()
         v = self.cleaned_data['_default_value']
         if v:
             try:
@@ -172,16 +172,20 @@ class AttributeAdminForm(forms.ModelForm):
                 self.instance.default_value = v
             except ValidationError, vex:
                 self._errors['_default_value'] = ErrorList([vex.message])
+        if v == '': 
+            self.cleaned_data['_default_value'] = None
         return self.cleaned_data
 
 class AttributeAdmin(ModelAdmin):
     form = AttributeAdminForm
-    list_display = ('name', 'slug', 'datatype', 'description', 'site', 'type')
+    list_display = ('name', 'slug', 'datatype', 'description', '_default_value',
+                    'site', 'type')
     list_filter = ['site']
     prepopulated_fields = {'slug': ('name',)}
     fieldsets = (
         (_('Main Fields'), {
-            'fields': ('name', 'site', 'slug', 'required', 'description')
+            'fields': ('name', 'order', 'site', 'slug', 'required',
+                       'description')
         }),
         (_('Type Field'), {
             'fields': ('datatype', 'type')

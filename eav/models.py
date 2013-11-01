@@ -153,7 +153,7 @@ class Attribute(models.Model):
     '''
 
     class Meta:
-        ordering = ['name']
+        ordering = ['order', 'name']
         unique_together = ('site', 'slug')
 
     TYPE_TEXT = 'text'
@@ -176,6 +176,7 @@ class Attribute(models.Model):
         (TYPE_DISTANCE, _("Distance Field"))
     )
 
+    order = models.PositiveIntegerField(db_index=True, default=0)
     name = models.CharField(_(u"name"), max_length=100,
                             help_text=_(u"User-friendly attribute name"))
 
@@ -194,7 +195,7 @@ class Attribute(models.Model):
 
     type = models.CharField(_(u"type"), max_length=20, blank=True, null=True)
 
-    _default_value = models.TextField(blank=True, null=True)
+    _default_value = models.TextField(_(u"default value"),blank=True, null=True)
 
     @property
     def default_value(self):
@@ -251,6 +252,8 @@ class Attribute(models.Model):
                 raise ValidationError('Please enter a valid distance.')
         elif self.datatype != self.TYPE_TEXT:
             raise ValidationError('Default values are not allowed for this type.')
+        else:
+            value = value or None
 
         self._default_value = value
     
@@ -289,11 +292,13 @@ class Attribute(models.Model):
             'bool': validate_bool,
             'object': validate_object,
             'enum': validate_enum,
-            'dist': validate_distance
+            #TODO: Our field already has a default distance validator on it,
+            #no need for another
+            'dist': None#validate_distance
         }
 
         validation_function = DATATYPE_VALIDATORS[self.datatype]
-        return [validation_function]
+        return [validation_function] if validation_function else []
 
     def validate_value(self, value):
         '''
@@ -303,6 +308,8 @@ class Attribute(models.Model):
         for validator in self.get_validators():
             validator(value)
         if self.datatype == self.TYPE_ENUM:
+            if not isinstance(value, EnumValue):
+                value = EnumValue.objects.get(pk=value)
             if value not in self.enum_group.enums.all():
                 raise ValidationError(_(u"%(enum)s is not a valid choice "
                                         u"for %(attr)s") % \
@@ -558,7 +565,7 @@ class Entity(object):
                 value = self._getattr(attribute.slug)
             else:
                 value = values_dict.get(attribute.slug, None)
-            
+
             if value is None:
                 if attribute.required:
                     raise ValidationError(_(u"Field cannot be blank"),
@@ -569,14 +576,16 @@ class Entity(object):
                 except ValidationError, e:
                     raise ValidationError(_(u"%(err)s" % {'err': e.message}),
                                           params={'attr': attribute})
-        
+
             aval = validators.get(attribute.slug.replace("-", "_"), None)
             if aval:
-                try:
-                    aval(value, attribute, self.model)
-                except ValidationError, e:
-                    raise ValidationError(_(u"%(err)s" % {'err': e.message}),
-                                          params={'attr': attribute})
+                if callable(aval): aval = (aval, )
+                for av in aval:
+                    try:
+                        av(value, attribute, self.model)
+                    except ValidationError, e:
+                        raise ValidationError(_(u"%(err)s" % {'err':e.message}),
+                                              params={'attr': attribute})
 
 
     def get_values_dict(self):
