@@ -69,7 +69,7 @@ class BaseDynamicEntityForm(ModelForm):
         if self._errors: return self.cleaned_data
         try:
             self.entity.validate_attributes(data=self.cleaned_data)
-        except ValidationError as vex:
+        except ValidationError, vex:
             attr = getattr(vex, 'params', {}).get('attr', None)
             if attr:
                 self.errors[attr.slug] = self.error_class(vex.messages)
@@ -125,8 +125,8 @@ class BaseDynamicEntityForm(ModelForm):
         """
 
         if self.errors:
-            raise ValueError(_("The %s could not be saved because the data"
-                             "didn't validate.") % \
+            raise ValueError(_(u"The %s could not be saved because the data"
+                             u"didn't validate.") % \
                              self.instance._meta.object_name)
 
         # create entity instance, don't save yet

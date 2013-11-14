@@ -6,7 +6,7 @@ class Patient(models.Model):
 
     name = models.CharField(max_length=12)
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
 class Encounter(models.Model):
@@ -16,6 +16,6 @@ class Encounter(models.Model):
     num = models.PositiveSmallIntegerField()
     patient = models.ForeignKey(Patient)
 
-    def __unicode__(self):
+    def __str__(self):
         return '%s: encounter num %d' % (self.patient, self.num)
 

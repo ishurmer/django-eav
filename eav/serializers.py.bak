@@ -46,7 +46,7 @@ class EAVModelSerializer(serializers.ModelSerializer):
 
     def eav_values_dict_to_native(self, dct):
         add_fields = {}
-        for k, v in list(dct.items( )):
+        for k, v in dct.items( ):
             if isinstance(v, EnumValue):
                 add_fields[k] = v.value
             elif isinstance(v, D):
@@ -93,6 +93,6 @@ class EAVModelSerializer(serializers.ModelSerializer):
             eav_data = getattr(self, '_eav_data', {})
             if eav_data:
                 eav = EAVModelSerializer._get_eav_object(obj)
-                for k, v in list(eav_data.items( )):
+                for k, v in eav_data.items( ):
                     setattr(eav, k, v)
         return obj

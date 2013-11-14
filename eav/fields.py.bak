@@ -52,9 +52,9 @@ class EavSlugField(models.SlugField):
         super(EavSlugField, self).validate(value, instance)
         slug_regex = r'[a-z][a-z0-9_]*'
         if not re.match(slug_regex, value):
-            raise ValidationError(_("Must be all lower case, " \
-                                    "start with a letter, and contain " \
-                                    "only letters, numbers, or underscores."))
+            raise ValidationError(_(u"Must be all lower case, " \
+                                    u"start with a letter, and contain " \
+                                    u"only letters, numbers, or underscores."))
 
     @staticmethod
     def create_slug_from_name(name):
@@ -89,5 +89,5 @@ class EavDatatypeField(models.CharField):
         a = instance.__class__.objects.filter(pk=instance.pk).values('datatype')
 
         if instance.value_set.count() and instance.datatype != a[0]['datatype']:
-            raise ValidationError(_("You cannot change the datatype of an "
-                                    "attribute that is already in use."))
+            raise ValidationError(_(u"You cannot change the datatype of an "
+                                    u"attribute that is already in use."))

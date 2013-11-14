@@ -49,7 +49,6 @@ from .validators import *
 from .fields import EavSlugField, EavDatatypeField
 
 from measurement.fields import DistanceField
-import collections
 
 class EnumValue(models.Model):
     '''
@@ -79,10 +78,10 @@ class EnumValue(models.Model):
        objects, as you should have used the same *Yes* and *No* *EnumValues*
        for both *EnumGroups*.
     '''
-    value = models.CharField(_("value"), db_index=True,
+    value = models.CharField(_(u"value"), db_index=True,
                              unique=True, max_length=50)
 
-    def __str__(self):
+    def __unicode__(self):
         return self.value
 
 
@@ -95,11 +94,11 @@ class EnumGroup(models.Model):
     See :class:`EnumValue` for an example.
 
     '''
-    name = models.CharField(_("name"), unique=True, max_length=100)
+    name = models.CharField(_(u"name"), unique=True, max_length=100)
 
-    enums = models.ManyToManyField(EnumValue, verbose_name=_("enum group"))
+    enums = models.ManyToManyField(EnumValue, verbose_name=_(u"enum group"))
 
-    def __str__(self):
+    def __unicode__(self):
         return self.name
 
 
@@ -167,35 +166,35 @@ class Attribute(models.Model):
     TYPE_DISTANCE = 'dist'
 
     DATATYPE_CHOICES = (
-        (TYPE_TEXT, _("Text")),
-        (TYPE_FLOAT, _("Float")),
-        (TYPE_INT, _("Integer")),
-        (TYPE_DATE, _("Date")),
-        (TYPE_BOOLEAN, _("True / False")),
-        (TYPE_OBJECT, _("Django Object")),
-        (TYPE_ENUM, _("Multiple Choice")),
+        (TYPE_TEXT, _(u"Text")),
+        (TYPE_FLOAT, _(u"Float")),
+        (TYPE_INT, _(u"Integer")),
+        (TYPE_DATE, _(u"Date")),
+        (TYPE_BOOLEAN, _(u"True / False")),
+        (TYPE_OBJECT, _(u"Django Object")),
+        (TYPE_ENUM, _(u"Multiple Choice")),
         (TYPE_DISTANCE, _("Distance Field"))
     )
 
     order = models.PositiveIntegerField(db_index=True, default=0)
-    name = models.CharField(_("name"), max_length=100,
-                            help_text=_("User-friendly attribute name"))
+    name = models.CharField(_(u"name"), max_length=100,
+                            help_text=_(u"User-friendly attribute name"))
 
-    site = models.ForeignKey(Site, verbose_name=_("site"), default=1)
+    site = models.ForeignKey(Site, verbose_name=_(u"site"), default=1)
 
-    slug = EavSlugField(_("slug"), max_length=50, db_index=True,
-                          help_text=_("Short unique attribute label"))
+    slug = EavSlugField(_(u"slug"), max_length=50, db_index=True,
+                          help_text=_(u"Short unique attribute label"))
 
-    description = models.CharField(_("description"), max_length=256,
+    description = models.CharField(_(u"description"), max_length=256,
                                      blank=True, null=True,
-                                     help_text=_("Short description"))
+                                     help_text=_(u"Short description"))
 
-    enum_group = models.ForeignKey(EnumGroup, verbose_name=_("choice group"),
+    enum_group = models.ForeignKey(EnumGroup, verbose_name=_(u"choice group"),
                                    blank=True, null=True)
 
-    type = models.CharField(_("type"), max_length=20, blank=True, null=True)
+    type = models.CharField(_(u"type"), max_length=20, blank=True, null=True)
 
-    _default_value = models.TextField(_("default value"),blank=True, null=True)
+    _default_value = models.TextField(_(u"default value"),blank=True, null=True)
 
     @property
     def default_value(self):
@@ -261,15 +260,15 @@ class Attribute(models.Model):
     def help_text(self):
         return self.description
 
-    datatype = EavDatatypeField(_("data type"), max_length=6,
+    datatype = EavDatatypeField(_(u"data type"), max_length=6,
                                 choices=DATATYPE_CHOICES)
 
-    created = models.DateTimeField(_("created"), default=datetime.now,
+    created = models.DateTimeField(_(u"created"), default=datetime.now,
                                    editable=False)
 
-    modified = models.DateTimeField(_("modified"), auto_now=True)
+    modified = models.DateTimeField(_(u"modified"), auto_now=True)
 
-    required = models.BooleanField(_("required"), default=False)
+    required = models.BooleanField(_(u"required"), default=False)
 
     objects = models.Manager()
     on_site = CurrentSiteManager()
@@ -311,8 +310,8 @@ class Attribute(models.Model):
             if not isinstance(value, EnumValue):
                 value = EnumValue.objects.get(pk=value)
             if value not in self.enum_group.enums.all():
-                raise ValidationError(_("%(enum)s is not a valid choice "
-                                        "for %(attr)s") % \
+                raise ValidationError(_(u"%(enum)s is not a valid choice "
+                                        u"for %(attr)s") % \
                                        {'enum': value, 'attr': self})
 
     def save(self, *args, **kwargs):
@@ -333,13 +332,13 @@ class Attribute(models.Model):
         '''
         if self.datatype == self.TYPE_ENUM and not self.enum_group:
             raise ValidationError(_(
-                "You must set the choice group for multiple choice" \
-                "attributes"))
+                u"You must set the choice group for multiple choice" \
+                u"attributes"))
 
         if self.datatype != self.TYPE_ENUM and self.enum_group:
             raise ValidationError(_(
-                "You can only assign a choice group to multiple choice " \
-                "attributes"))
+                u"You can only assign a choice group to multiple choice " \
+                u"attributes"))
 
     def get_choices(self):
         '''
@@ -382,8 +381,8 @@ class Attribute(models.Model):
             value_obj.value = value
             value_obj.save()
 
-    def __str__(self):
-        return "%s (%s)" % (self.name, self.get_datatype_display())
+    def __unicode__(self):
+        return u"%s (%s)" % (self.name, self.get_datatype_display())
 
 
 class Value(models.Model):
@@ -428,11 +427,11 @@ class Value(models.Model):
     value_object = generic.GenericForeignKey(ct_field='generic_value_ct',
                                              fk_field='generic_value_id')
 
-    created = models.DateTimeField(_("created"), default=datetime.now)
-    modified = models.DateTimeField(_("modified"), auto_now=True)
+    created = models.DateTimeField(_(u"created"), default=datetime.now)
+    modified = models.DateTimeField(_(u"modified"), auto_now=True)
 
     attribute = models.ForeignKey(Attribute, db_index=True,
-                                  verbose_name=_("attribute"))
+                                  verbose_name=_(u"attribute"))
 
     def save(self, *args, **kwargs):
         '''
@@ -449,8 +448,8 @@ class Value(models.Model):
         if self.attribute.datatype == Attribute.TYPE_ENUM and \
            self.value_enum:
             if self.value_enum not in self.attribute.enum_group.enums.all():
-                raise ValidationError(_("%(choice)s is not a valid " \
-                                        "choice for %s(attribute)") % \
+                raise ValidationError(_(u"%(choice)s is not a valid " \
+                                        u"choice for %s(attribute)") % \
                                         {'choice': self.value_enum,
                                          'attribute': self.attribute})
 
@@ -468,8 +467,8 @@ class Value(models.Model):
 
     value = property(_get_value, _set_value)
 
-    def __str__(self):
-        return "%s - %s: \"%s\"" % (self.entity, self.attribute.name,
+    def __unicode__(self):
+        return u"%s - %s: \"%s\"" % (self.entity, self.attribute.name,
                                      self.value)
 
 
@@ -502,8 +501,8 @@ class Entity(object):
             try:
                 attribute = self.get_attribute_by_slug(name)
             except Attribute.DoesNotExist:
-                raise AttributeError(_("%(obj)s has no EAV attribute named " \
-                                       "'%(attr)s'") % \
+                raise AttributeError(_(u"%(obj)s has no EAV attribute named " \
+                                       u"'%(attr)s'") % \
                                      {'obj': self.model, 'attr': name})
             try:
                 return self.get_value_by_attribute(attribute).value
@@ -568,23 +567,23 @@ class Entity(object):
 
             if value is None:
                 if attribute.required:
-                    raise ValidationError(_("Field cannot be blank"),
+                    raise ValidationError(_(u"Field cannot be blank"),
                                               params={'attr': attribute})
             else:
                 try:
                     attribute.validate_value(value)
-                except ValidationError as e:
-                    raise ValidationError(_("%(err)s" % {'err': e.message}),
+                except ValidationError, e:
+                    raise ValidationError(_(u"%(err)s" % {'err': e.message}),
                                           params={'attr': attribute})
 
             aval = validators.get(attribute.slug.replace("-", "_"), None)
             if aval:
-                if isinstance(aval, collections.Callable): aval = (aval, )
+                if callable(aval): aval = (aval, )
                 for av in aval:
                     try:
                         av(value, attribute, self.model)
-                    except ValidationError as e:
-                        raise ValidationError(_("%(err)s" % {'err':e.message}),
+                    except ValidationError, e:
+                        raise ValidationError(_(u"%(err)s" % {'err':e.message}),
                                               params={'attr': attribute})
 
 

@@ -48,7 +48,7 @@ class BaseEntityAdmin(ModelAdmin):
         form = context['adminform'].form
 
         # infer correct data from the form
-        fieldsets = self.fieldsets or [(None, {'fields': list(form.fields.keys())})]
+        fieldsets = self.fieldsets or [(None, {'fields': form.fields.keys()})]
         adminform = admin.helpers.AdminForm(form, fieldsets,
                                       self.prepopulated_fields)
         media = mark_safe(self.media + adminform.media)
@@ -156,7 +156,7 @@ class BaseEntityInline(InlineModelAdmin):
         instance = self.model(**kw)
         form = formset.form(request.POST, instance=instance)
 
-        return [(None, {'fields': list(form.fields.keys())})]
+        return [(None, {'fields': form.fields.keys()})]
 
 class AttributeAdminForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
@@ -170,7 +170,7 @@ class AttributeAdminForm(forms.ModelForm):
             try:
                 self.instance.datatype = self.cleaned_data['datatype']
                 self.instance.default_value = v
-            except ValidationError as vex:
+            except ValidationError, vex:
                 self._errors['_default_value'] = ErrorList([vex.message])
         if v == '': 
             self.cleaned_data['_default_value'] = None
